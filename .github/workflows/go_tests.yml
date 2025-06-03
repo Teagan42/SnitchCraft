@@ -1,0 +1,34 @@
+name: Go Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: 1.22
+
+    - name: Install dependencies
+      run: go mod tidy
+
+    - name: Run tests with coverage
+      run: go test ./... -coverprofile=coverage.out
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        files: coverage.out
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: true
+        plugins: pr-comment, coverage-diff
