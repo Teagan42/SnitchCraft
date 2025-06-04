@@ -85,4 +85,3 @@ To add a new plugin:
 	3.	Register the Plugin: Ensure your plugin is registered during application initialization.
 
 This modular approach allows for easy extension and customization of SnitchCraft’s capabilities.
-
