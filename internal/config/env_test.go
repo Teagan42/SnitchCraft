@@ -72,12 +72,24 @@ func TestLoad_WithEnvVars(t *testing.T) {
 	}
 
 	defer func() {
-		os.Unsetenv("BACKEND_URL")
-		os.Unsetenv("PARALLEL_CHECKS")
-		os.Unsetenv("LOG_FORWARD_URL")
-		os.Unsetenv("METRICS_PORT")
-		os.Unsetenv("LISTEN_PORT")
-		os.Unsetenv("OTEL_EXPORTER")
+		if err := os.Unsetenv("BACKEND_URL"); err != nil {
+			t.Fatalf("Failed to unset BACKEND_URL: %v", err)
+		}
+		if err := os.Unsetenv("PARALLEL_CHECKS"); err != nil {
+			t.Fatalf("Failed to unset PARALLEL_CHECKS: %v", err)
+		}
+		if err := os.Unsetenv("LOG_FORWARD_URL"); err != nil {
+			t.Fatalf("Failed to unset LOG_FORWARD_URL: %v", err)
+		}
+		if err := os.Unsetenv("METRICS_PORT"); err != nil {
+			t.Fatalf("Failed to unset METRICS_PORT: %v", err)
+		}
+		if err := os.Unsetenv("LISTEN_PORT"); err != nil {
+			t.Fatalf("Failed to unset LISTEN_PORT: %v", err)
+		}
+		if err := os.Unsetenv("OTEL_EXPORTER"); err != nil {
+			t.Fatalf("Failed to unset OTEL_EXPORTER: %v", err)
+		}
 	}()
 
 	cfg, err := Load()
@@ -106,8 +118,14 @@ func TestLoad_WithEnvVars(t *testing.T) {
 }
 
 func TestLoad_MissingBackendURL(t *testing.T) {
-	os.Setenv("BACKEND_URL", "")
-	defer os.Unsetenv("BACKEND_URL")
+	if err := os.Setenv("BACKEND_URL", ""); err != nil {
+		t.Fatalf("Failed to set BACKEND_URL: %v", err)
+	}
+	defer func() {
+		if err := os.Unsetenv("BACKEND_URL"); err != nil {
+			t.Fatalf("Failed to unset BACKEND_URL: %v", err)
+		}
+	}()
 
 	_, err := Load()
 	if err == nil {
