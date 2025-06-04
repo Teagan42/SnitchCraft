@@ -27,7 +27,7 @@ func getEnv(key, def string) string {
 
 func Validate(cfg models.Config) (models.Config, error) {
 	if cfg.BackendURL == "" {
-		return models.Config{}, fmt.Errorf("issing required env var: BACKEND_URL")
+		return models.Config{}, fmt.Errorf("missing required env var: BACKEND_URL")
 	}
 
 	return cfg, nil

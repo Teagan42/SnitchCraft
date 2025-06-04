@@ -67,7 +67,7 @@ This will execute all unit and integration tests across the project.
 
 To build and run the application using Docker Compose:
 
-```
+```shell
 docker-compose up --build
 ```
 

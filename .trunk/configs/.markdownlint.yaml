@@ -1,2 +1,4 @@
 # Prettier friendly markdownlint config (all formatting rules disabled)
 extends: markdownlint/style/prettier
+disabledRules:
+  - MD046 # Code blocks should be fenced with backticks

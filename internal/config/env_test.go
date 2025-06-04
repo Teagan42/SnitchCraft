@@ -7,8 +7,8 @@ import (
 
 func TestLoad_Defaults(t *testing.T) {
 	// Unset all relevant env vars to test defaults
-	if err := os.Unsetenv("BACKEND_URL"); err != nil {
-		t.Fatalf("Failed to unset BACKEND_URL: %v", err)
+	if err := os.Setenv("BACKEND_URL", "http://localhost:8081"); err != nil {
+		t.Fatalf("Failed to set BACKEND_URL: %v", err)
 	}
 	if err := os.Unsetenv("PARALLEL_CHECKS"); err != nil {
 		t.Fatalf("Failed to unset PARALLEL_CHECKS: %v", err)
