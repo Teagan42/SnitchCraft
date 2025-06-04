@@ -1,7 +1,7 @@
 package interfaces
 
-import "snitchcraft/internal/models"
+import "github.com/teagan42/snitchcraft/internal/models"
 
 type LogSink interface {
-	Send(log models.LogEntry) error
+	Log(log models.Loggable) error
 }

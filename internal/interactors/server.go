@@ -1,18 +1,15 @@
 package interactors
 
 import (
-	"context"
-	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
-	"snitchcraft/internal/config/env"
-	"snitchcraft/internal/interfaces"
-	"snitchcraft/internal/models"
-	"snitchcraft/plugins/heuristics"
-	"snitchcraft/plugins/loggers"
-	"snitchcraft/plugins/metrics"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/teagan42/snitchcraft/internal/models"
+	"github.com/teagan42/snitchcraft/utils"
+
+	"maps"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
@@ -20,35 +17,47 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace"
 )
 
-type ResultMsg struct {
-	Request *http.Request
-	Reasons []string
-}
+var resultChan = make(chan models.RequestResult, 10)
 
-var logSink interfaces.LogSink = &loggers.StdoutLogger{}
-var metricsSink interfaces.MetricsSink = &metrics.PrometheusMetrics{}
-var resultChan = make(chan ResultMsg, 10)
-
-func StartProxyServer(cfg env.Config) error {
+func StartProxyServer(cfg models.Config) error {
 	setupTracing()
 
-	go resultWorker()
+	go MetricsWorker(cfg)
+	go LogWorker(cfg)
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		var reasons []string
-		for _, h := range heuristics.RegisteredHeuristics {
-			if reason, bad := h.Check(r); bad {
-				reasons = append(reasons, fmt.Sprintf("%s: %s", h.Name(), reason))
-			}
+		r.Header.Set("X-Trace-ID", uuid.New().String())
+		logsChannel <- models.RequestLogEntry{
+			Time:    time.Now(),
+			Method:  r.Method,
+			Path:    r.URL.Path,
+			Headers: r.Header,
+			TraceID: r.Header.Get("X-Trace-ID"),
 		}
-
-		metricsSink.IncRequest()
-		if len(reasons) > 0 {
-			metricsSink.IncMalicious()
-		}
+		var results []models.HeuristicResult = RunHeuristicChecks(r, cfg)
 
 		// pass to logging via channel
-		resultChan <- ResultMsg{Request: r, Reasons: reasons}
+		resultChan <- models.RequestResult{Request: r, HeuristicResults: results}
+
+		if len(utils.Map(results, func(r models.HeuristicResult) bool {
+			return r.Issue != ""
+		})) > 0 {
+			// if any heuristic found an issue, return 403
+			w.WriteHeader(http.StatusForbidden)
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(`{"error": "Forbidden"}`))
+			logsChannel <- models.ResponseLogEntry{
+				Time:             time.Now(),
+				Method:           r.Method,
+				Path:             r.URL.Path,
+				Headers:          r.Header,
+				TraceID:          r.Header.Get("X-Trace-ID"),
+				Malicious:        true,
+				HeuristicResults: results,
+				StatusCode:       http.StatusForbidden,
+			}
+			return
+		}
 
 		// forward request
 		req, _ := http.NewRequest(r.Method, cfg.BackendURL+r.URL.RequestURI(), r.Body)
@@ -56,32 +65,38 @@ func StartProxyServer(cfg env.Config) error {
 
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
+			logsChannel <- models.ResponseLogEntry{
+				Time:             time.Now(),
+				Method:           r.Method,
+				Path:             r.URL.Path,
+				Headers:          r.Header,
+				TraceID:          r.Header.Get("X-Trace-ID"),
+				Malicious:        false,
+				HeuristicResults: results,
+				StatusCode:       http.StatusBadGateway,
+			}
 			http.Error(w, "upstream error", http.StatusBadGateway)
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(`{"error": "Bad Gateway"}`))
 			return
 		}
 		defer resp.Body.Close()
-		for k, v := range resp.Header {
-			w.Header()[k] = v
+		logsChannel <- models.ResponseLogEntry{
+			Time:             time.Now(),
+			Method:           r.Method,
+			Path:             r.URL.Path,
+			Headers:          r.Header,
+			TraceID:          r.Header.Get("X-Trace-ID"),
+			Malicious:        false,
+			HeuristicResults: results,
+			StatusCode:       resp.StatusCode,
 		}
+		maps.Copy(w.Header(), resp.Header)
 		w.WriteHeader(resp.StatusCode)
 		io.Copy(w, resp.Body)
 	})
 
 	return http.ListenAndServe(cfg.ListenPort, nil)
-}
-
-func resultWorker() {
-	for msg := range resultChan {
-		e := models.LogEntry{
-			Time:      time.Now().UTC(),
-			Method:    msg.Request.Method,
-			Path:      msg.Request.URL.RequestURI(),
-			Headers:   msg.Request.Header.Clone(),
-			Malicious: len(msg.Reasons) > 0,
-			Reasons:   msg.Reasons,
-		}
-		_ = logSink.Send(e)
-	}
 }
 
 func setupTracing() {

@@ -1,15 +1,6 @@
-package heuristics
-import (
-    "net/http"
-    "sync"
-)
+package models
 
 type HeuristicResult struct {
-    Name   string
-    Reason string
-}
-
-type HeuristicCheck interface {
-    Name() string
-    Check(r *http.Request) (string, bool) // returns (reason, isMalicious)
+	Name  string
+	Issue string
 }

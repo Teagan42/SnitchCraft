@@ -2,21 +2,19 @@ package metrics
 
 import (
 	"fmt"
-	"sync/atomic"
-	"snitchcraft/internal/interfaces"
+
+	"github.com/teagan42/snitchcraft/internal/interfaces"
+	"github.com/teagan42/snitchcraft/internal/models"
 )
 
 type PrometheusMetrics struct{}
 
-var totalReq uint64
-var totalMalicious uint64
-
-func (m *PrometheusMetrics) IncRequest() {
-	atomic.AddUint64(&totalReq, 1)
+func (m *PrometheusMetrics) UpdateRequestStats(stats models.RequestStats) {
+	// This method is not used in this implementation
 }
 
-func (m *PrometheusMetrics) IncMalicious() {
-	atomic.AddUint64(&totalMalicious, 1)
+func (m *PrometheusMetrics) UpdateHeuristicStats(stats map[string]uint64) {
+	// This method is not used in this implementation
 }
 
 func init() {

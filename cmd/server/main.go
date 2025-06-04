@@ -1,13 +1,13 @@
 package main
 
 import (
+	"github.com/teagan42/snitchcraft/internal/config"
+	"github.com/teagan42/snitchcraft/internal/interactors"
 	"log"
-	"snitchcraft/internal/config/env"
-	"snitchcraft/internal/interactors"
 )
 
 func main() {
-	cfg, err := env.Load()
+	cfg, err := config.Load()
 	if err != nil {
 		log.Fatalf("config error: %v", err)
 	}

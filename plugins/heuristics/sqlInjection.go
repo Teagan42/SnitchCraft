@@ -1,8 +1,10 @@
-package plugins
+package heuristics
 
 import (
-    "net/http"
-    "regexp"
+	"net/http"
+	"regexp"
+
+	"github.com/teagan42/snitchcraft/internal/interactors"
 )
 
 var sqlInjectionRegex = regexp.MustCompile(`(?i)(union\s+select|or\s+1=1|drop\s+table)`)
@@ -10,16 +12,16 @@ var sqlInjectionRegex = regexp.MustCompile(`(?i)(union\s+select|or\s+1=1|drop\s+
 type SQLInjectionCheck struct{}
 
 func (s SQLInjectionCheck) Name() string {
-    return "SQL Injection"
+	return "SQL Injection"
 }
 
 func (s SQLInjectionCheck) Check(r *http.Request) (string, bool) {
-    if sqliRegex.MatchString(r.URL.RawQuery) {
-        return "Query contains possible SQL injection", true
-    }
-    return "", false
+	if sqlInjectionRegex.MatchString(r.URL.RawQuery) {
+		return "Query contains possible SQL injection", true
+	}
+	return "", false
 }
 
 func init() {
-    RegisterCheck(SQLInjectionCheck{})
+	interactors.RegisterHeuristic(SQLInjectionCheck{})
 }

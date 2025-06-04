@@ -1,21 +1,24 @@
-package loggers
+package metrics
 
 import (
-	"encoding/json"
 	"fmt"
-	"snitchcraft/internal/interfaces"
-	"snitchcraft/internal/models"
+
+	"github.com/teagan42/snitchcraft/internal/interfaces"
+	"github.com/teagan42/snitchcraft/internal/models"
 )
 
-type StdoutLogger struct{}
+type OtelMetrics struct{}
 
-func (s *StdoutLogger) Send(entry models.LogEntry) error {
-	data, err := json.Marshal(entry)
-	if err != nil {
-		return err
-	}
-	fmt.Println(string(data))
-	return nil
+func (m *OtelMetrics) UpdateRequestStats(stats models.RequestStats) {
+	// This method is not used in this implementation
 }
 
-var _ interfaces.LogSink = (*StdoutLogger)(nil)
+func (m *OtelMetrics) UpdateHeuristicStats(stats map[string]uint64) {
+	// This method is not used in this implementation
+}
+
+func init() {
+	fmt.Println("[metrics] OtelMetrics initialized")
+}
+
+var _ interfaces.MetricsSink = (*OtelMetrics)(nil)

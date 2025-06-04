@@ -1,7 +1,6 @@
-package plugins
+package heuristics
 
 import (
-	"net/http"
 	"net/http/httptest"
 	"testing"
 )
@@ -10,7 +9,7 @@ func TestSuspiciousUserAgent(t *testing.T) {
 	req := httptest.NewRequest("GET", "/", nil)
 	req.Header.Set("User-Agent", "python-requests")
 
-	check := UserAgentCheck{}
+	check := SuspiciousUserAgent{}
 	reason, isMalicious := check.Check(req)
 	if !isMalicious {
 		t.Fatal("expected request to be flagged as malicious")
@@ -59,3 +58,6 @@ func TestSuspiciousMethodCheck(t *testing.T) {
 		t.Fatal("expected non-empty reason")
 	}
 }
+func TestAsyncRunHeuristicChecks_SingleHeuristic(t *testing.T) {
+	// Mock heuristic
+	type mockHeuristic struct{}

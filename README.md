@@ -5,6 +5,7 @@
 A modular HTTP reverse proxy that uses plugin-based heuristics for security inspection, with pluggable logging and metrics backends.
 
 ## Features
+
 - Reverse proxy handler
 - Plugin-based heuristic analyzers
 - Plugin-based logging
@@ -13,29 +14,35 @@ A modular HTTP reverse proxy that uses plugin-based heuristics for security insp
 - OTEL-ready, Loki-compatible
 
 ## Layout
+
 - `cmd/` — app entrypoint
 - `internal/` — interfaces and shared models
 - `plugins/` — actual plugin implementations
 
 ## Included Heuristics
+
 - Suspicious User-Agent (e.g., curl, python)
 - SQL Injection detection
 - Anomalous headers (missing or fake headers)
 - Suspicious HTTP methods (TRACE, TRACK, CONNECT, etc.)
 
 ## Usage
+
 ```bash
 go mod tidy
 go run cmd/server/main.go
 ```
 
 ## Configuration
+
 Change the backend URL in `main.go`:
+
 ```go
 StartProxy(":8080", "http://localhost:8081")
 ```
 
 ## Logging Output Example
+
 ```json
 {
   "time": "2025-06-03T15:20:01Z",
@@ -53,6 +60,7 @@ StartProxy(":8080", "http://localhost:8081")
 ```
 
 ## Run Tests
+
 ```bash
 go test ./... -cover -v
 ```
