@@ -33,7 +33,7 @@ jobs:
           config: .github/.testcoverage.yml
 
       - name: Post coverage report
-        if: env.pull_request_id
+        if: github.event.pull_request.number
         uses: thollander/actions-comment-pull-request@v3
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
