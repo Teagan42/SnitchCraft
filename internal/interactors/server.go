@@ -34,7 +34,7 @@ func StartProxyServer(cfg models.Config) error {
 			Headers: r.Header,
 			TraceID: r.Header.Get("X-Trace-ID"),
 		}
-		var results []models.HeuristicResult = RunHeuristicChecks(r, cfg)
+		var results = RunHeuristicChecks(r, cfg)
 
 		// pass to logging via channel
 		resultChan <- models.RequestResult{Request: r, HeuristicResults: results}
@@ -45,7 +45,11 @@ func StartProxyServer(cfg models.Config) error {
 			// if any heuristic found an issue, return 403
 			w.WriteHeader(http.StatusForbidden)
 			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(`{"error": "Forbidden"}`))
+			_, err := w.Write([]byte(`{"error": "Forbidden"}`))
+			if err != nil {
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
 			logsChannel <- models.ResponseLogEntry{
 				Time:             time.Now(),
 				Method:           r.Method,
@@ -77,7 +81,10 @@ func StartProxyServer(cfg models.Config) error {
 			}
 			http.Error(w, "upstream error", http.StatusBadGateway)
 			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(`{"error": "Bad Gateway"}`))
+			if _, err := w.Write([]byte(`{"error": "Bad Gateway"}`)); err != nil {
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
 			return
 		}
 		defer resp.Body.Close()
@@ -93,7 +100,10 @@ func StartProxyServer(cfg models.Config) error {
 		}
 		maps.Copy(w.Header(), resp.Header)
 		w.WriteHeader(resp.StatusCode)
-		io.Copy(w, resp.Body)
+		if _, err := io.Copy(w, resp.Body); err != nil {
+			http.Error(w, "Error copying response body", http.StatusInternalServerError)
+			return
+		}
 	})
 
 	return http.ListenAndServe(cfg.ListenPort, nil)

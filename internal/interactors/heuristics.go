@@ -40,7 +40,7 @@ func SyncRunHeuristicChecks(
 
 	for _, heuristic := range RegisteredHeuristics {
 		if name, ok := heuristic.Check(req); ok {
-			var result models.HeuristicResult = models.HeuristicResult{
+			var result = models.HeuristicResult{
 				Name:  heuristic.Name(),
 				Issue: name,
 			}
@@ -65,7 +65,7 @@ func AsyncRunHeuristicChecks(
 		go func(h interfaces.Heuristic) {
 			defer wg.Done()
 			if name, ok := h.Check(req); ok {
-				var result models.HeuristicResult = models.HeuristicResult{
+				var result = models.HeuristicResult{
 					Name:  h.Name(),
 					Issue: name,
 				}
