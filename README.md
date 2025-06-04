@@ -1,4 +1,4 @@
-![Go](https://github.com/Teagan42/SnitchCraft/actions/workflows/go_tests.yml/badge.svg)
+![coverage](https://raw.githubusercontent.com/Teagan42/SnitchCraft/badges/.badges/main/coverage.svg)
 
 Certainly! Based on the recent enhancements in the feat/heuristic-channel branch of the SnitchCraft project, here’s an updated README.md that reflects the new architecture and features:
 

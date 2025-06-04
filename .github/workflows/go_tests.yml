@@ -5,6 +5,8 @@ permissions:
   pull-requests: write
 
 on:
+  push:
+    branches: [main]
   pull_request:
     branches: [main]
 
@@ -32,6 +34,8 @@ jobs:
         continue-on-error: true # Should fail after coverage comment is posted
         with:
           config: .github/.testcoverage.yml
+          git-token: ${{ github.ref_name == 'main' && secrets.GITHUB_TOKEN || '' }}
+          git-branch: badges
 
       - name: Post coverage report
         if: github.event.pull_request.number
@@ -43,7 +47,8 @@ jobs:
           message: |
             go-test-coverage report:
             ```
-            ${{ fromJSON(steps.coverage.outputs.report) }}```
+            ${{ fromJSON(steps.coverage.outputs.report) }}
+            ```
 
       - name: finally check coverage
         if: steps.coverage.outcome == 'failure'
