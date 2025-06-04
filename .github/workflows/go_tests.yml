@@ -4,8 +4,6 @@ permissions:
   contents: read
 
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
 
@@ -27,11 +25,26 @@ jobs:
       - name: Run tests with coverage
         run: go test ./... -coverprofile=coverage.out
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+      - name: Check test coverage
+        id: coverage
+        uses: vladopajic/go-test-coverage@v2
+        continue-on-error: true # Should fail after coverage comment is posted
         with:
-          files: coverage.out
-          flags: unittests
-          name: codecov-umbrella
-          fail_ci_if_error: true
-          plugins: pr-comment, coverage-diff
+          config: ./.github/.testcoverage.yml
+
+      - name: Post coverage report
+        if: env.pull_request_id
+        uses: thollander/actions-comment-pull-request@v3
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          comment-tag: coverage-report
+          pr-number: ${{ github.event.pull_request.number }}
+          message: |
+            go-test-coverage report:
+            ```
+            ${{ fromJSON(steps.coverage.outputs.report) }}```
+
+      - name: finally check coverage
+        if: steps.coverage.outcome == 'failure'
+        shell: bash
+        run: echo "coverage check failed" && exit 1
