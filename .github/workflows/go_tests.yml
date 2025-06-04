@@ -30,7 +30,7 @@ jobs:
         uses: vladopajic/go-test-coverage@v2
         continue-on-error: true # Should fail after coverage comment is posted
         with:
-          config: ./.github/.testcoverage.yml
+          config: .github/.testcoverage.yml
 
       - name: Post coverage report
         if: env.pull_request_id
