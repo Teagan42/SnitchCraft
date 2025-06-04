@@ -9,7 +9,7 @@ import (
 
 func Load() (models.Config, error) {
 	return Validate(models.Config{
-		BackendURL:     getEnv("BACKEND_URL", "http://localhost:8081"),
+		BackendURL:     getEnv("BACKEND_URL", ""),
 		ParallelChecks: getEnv("PARALLEL_CHECKS", "true") == "true",
 		LogForwardURL:  getEnv("LOG_FORWARD_URL", ""),
 		MetricsPort:    getEnv("METRICS_PORT", "9090"),
