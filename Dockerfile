@@ -4,3 +4,5 @@ WORKDIR /app
 COPY . .
 
 ENTRYPOINT [ "/app/entrypoint.sh" ]
+
+CMD [ "go", "run", "cmd/server/main.go" ]
