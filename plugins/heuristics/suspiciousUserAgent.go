@@ -9,7 +9,7 @@ import (
 type SuspiciousUserAgent struct{}
 
 func (u SuspiciousUserAgent) Name() string {
-	return "Suspicious User-Agent"
+	return "suspicious_user_agent"
 }
 
 func (u SuspiciousUserAgent) Check(r *http.Request) (string, bool) {

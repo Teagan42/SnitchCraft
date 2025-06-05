@@ -8,18 +8,24 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
+	"github.com/teagan42/snitchcraft/internal/interfaces"
 	"github.com/teagan42/snitchcraft/internal/models"
+	"github.com/teagan42/snitchcraft/plugins/heuristics"
 )
 
 func UnregisterPrometheusMetrics(pm *PrometheusMetrics) {
 	prometheus.Unregister(pm.requestCount)
 	prometheus.Unregister(pm.heuristicMatches)
+	prometheus.Unregister(pm.requestTime)
+	prometheus.DefaultRegisterer = prometheus.NewRegistry()
+	prometheus.DefaultGatherer = prometheus.DefaultRegisterer.(prometheus.Gatherer)
 }
 
 func TestNewPrometheusMetrics_NoPort(t *testing.T) {
 	cfg := models.Config{PrometheusPort: ""}
 	metrics := NewPrometheusMetrics(cfg)
 	if metrics != nil {
+		UnregisterPrometheusMetrics(metrics.(*PrometheusMetrics))
 		t.Error("expected nil when PrometheusPort is empty")
 	}
 }
@@ -38,10 +44,43 @@ func TestNewPrometheusMetrics_WithPort(t *testing.T) {
 	}
 }
 
+type testHeuristic struct {
+	NameField string
+	CheckFunc func(req *http.Request) (string, bool)
+}
+
+func (th *testHeuristic) Name() string {
+	return th.NameField
+}
+func (th *testHeuristic) Check(req *http.Request) (string, bool) {
+	return th.CheckFunc(req)
+}
+
+var h1 = &testHeuristic{
+	NameField: "h1",
+	CheckFunc: func(req *http.Request) (string, bool) {
+		return "issue1", true
+	},
+}
+var h2 = &testHeuristic{
+	NameField: "h2",
+	CheckFunc: func(req *http.Request) (string, bool) {
+		return "", false
+	},
+}
+
 func TestPrometheusMetrics_Start_CountsRequestsAndHeuristics(t *testing.T) {
+	originalHeuristics := heuristics.RegisteredHeuristics
+	heuristics.RegisteredHeuristics = []interfaces.Heuristic{
+		h1,
+		h2,
+	}
 	cfg := models.Config{PrometheusPort: "9090"}
 	pm := NewPrometheusMetrics(cfg).(*PrometheusMetrics)
-	defer UnregisterPrometheusMetrics(pm)
+	defer func() {
+		UnregisterPrometheusMetrics(pm)
+		heuristics.RegisteredHeuristics = originalHeuristics
+	}()
 	resultChan := make(chan models.RequestResult, 2)
 
 	req1 := models.RequestResult{
@@ -61,6 +100,7 @@ func TestPrometheusMetrics_Start_CountsRequestsAndHeuristics(t *testing.T) {
 		},
 		HeuristicResults: []models.HeuristicResult{
 			{Name: "h1", Issue: "issue2"},
+			{Name: "h2", Issue: "issue3"},
 		},
 	}
 	resultChan <- req1
@@ -86,13 +126,19 @@ func TestPrometheusMetrics_Start_CountsRequestsAndHeuristics(t *testing.T) {
 	}
 
 	// Check heuristicMatches
-	if err := pm.heuristicMatches.WithLabelValues("h1").Write(metric); err != nil {
+	if err := pm.heuristicMatches.With(prometheus.Labels{
+		"heuristic_h1": "true",
+		"heuristic_h2": "false",
+	}).Write(metric); err != nil {
 		t.Errorf("failed to get heuristic metric: %v", err)
 	}
-	if metric.GetCounter().GetValue() != 2 {
+	if metric.GetCounter().GetValue() != 1 {
 		t.Errorf("expected h1 count 2, got %v", metric.GetCounter().GetValue())
 	}
-	if err := pm.heuristicMatches.WithLabelValues("h2").Write(metric); err != nil {
+	if err := pm.heuristicMatches.With(prometheus.Labels{
+		"heuristic_h1": "false",
+		"heuristic_h2": "false",
+	}).Write(metric); err != nil {
 		t.Errorf("failed to get heuristic metric: %v", err)
 	}
 	if metric.GetCounter().GetValue() != 0 {

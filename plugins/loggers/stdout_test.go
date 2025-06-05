@@ -33,7 +33,9 @@ func TestStdoutLogger_Log_ValidEntry(t *testing.T) {
 	}
 
 	// Restore stdout and read output
-	w.Close()
+	if err := w.Close(); err != nil {
+		t.Fatalf("failed to close write pipe: %v", err)
+	}
 	os.Stdout = oldStdout
 	var buf bytes.Buffer
 	_, _ = buf.ReadFrom(r)

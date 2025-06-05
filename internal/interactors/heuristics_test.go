@@ -29,7 +29,7 @@ func TestRunHeuristicChecks_Sync(t *testing.T) {
 		t.Fatalf("expected 1 result, got %d", len(results))
 	}
 	if results[0].Name != "TestHeuristic" || results[0].Issue != "TestIssue" {
-		t.Errorf("unexpected result: %+v", results[0])
+		t.Errorf("unexpected result: %+v %+v", results[0], results)
 	}
 }
 

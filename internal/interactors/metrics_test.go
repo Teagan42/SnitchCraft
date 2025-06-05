@@ -6,6 +6,7 @@ package interactors
 import (
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/teagan42/snitchcraft/internal/interfaces"
 	"github.com/teagan42/snitchcraft/internal/models"
@@ -41,6 +42,7 @@ func TestMetricsWorker_StartsRegisteredPlugins(t *testing.T) {
 	cfg := models.Config{}
 
 	MetricsWorker(cfg, resultsChan)
+	time.Sleep(300 * time.Millisecond)
 
 	if !mockPlugin.started {
 		t.Error("plugin Start was not called")

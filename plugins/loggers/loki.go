@@ -68,7 +68,11 @@ func (l *LokiLogger) Log(log models.Loggable) error {
 	if err != nil {
 		return fmt.Errorf("[loggers][loki] failed to send log to Loki: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			fmt.Printf("[loggers][loki] failed to close response body: %v\n", err)
+		}
+	}()
 
 	if resp.StatusCode >= 300 {
 		return fmt.Errorf("[loggers][loki] received non-2xx from Loki: %s", resp.Status)
@@ -81,12 +85,10 @@ func NewLokiLogger(cfg models.Config) interfaces.Logger {
 	if cfg.LokiUrl == "" {
 		fmt.Printf("[loggers] not initializing LokiLogger: missing env LOKI_URL\n")
 		return nil // No Loki URL configured, skip logger
-
-		fmt.Printf("[loggers] initializing LokiLogger with URL: %s\n", cfg.LokiUrl)
 	}
 	return &LokiLogger{
 		client:  &http.Client{},
-		lokiURL: cfg.LokiUrl,
+		lokiURL: fmt.Sprintf("%s/loki/api/v1/push", cfg.LokiUrl), // kiUrl,
 		labels: map[string]string{
 			"job":  "snitchcraft",
 			"host": "localhost", // optional override with env if needed

@@ -16,9 +16,11 @@ func MetricsWorker(cfg models.Config, resultsChannel chan models.RequestResult) 
 		plugin := p(cfg)
 		if plugin != nil {
 			fmt.Printf("[interactors][metrics] starting metrics plugin: %s\n", plugin.Name())
-			if err := plugin.Start(resultsChannel); err != nil {
-				fmt.Printf("[interactors[metrics] failed to start metrics plugin %s: %v\n", plugin.Name(), err)
-			}
+			go func() {
+				if err := plugin.Start(resultsChannel); err != nil {
+					fmt.Printf("[interactors[metrics] failed to start metrics plugin %s: %v\n", plugin.Name(), err)
+				}
+			}()
 		}
 	})
 	fmt.Println("[interactors][metrics] started MetricsWorker...")

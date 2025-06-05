@@ -17,9 +17,11 @@ func LogWorker(cfg models.Config) {
 		logger := l(cfg)
 		if logger != nil {
 			fmt.Printf("[interactors][logs] starting logger: %s\n", logger.Name())
-			if err := logger.Start(logsChannel); err != nil {
-				fmt.Printf("[interactors][logs] failed to start logger %s: %v\n", logger.Name(), err)
-			}
+			go func(l interfaces.Logger) {
+				if err := l.Start(logsChannel); err != nil {
+					fmt.Printf("[interactors][logs] error starting logger %s: %v\n", l.Name(), err)
+				}
+			}(logger)
 		}
 	})
 	fmt.Println("[interactors][logs] started LogWorker...")

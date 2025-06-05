@@ -3,7 +3,6 @@ package metrics
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/teagan42/snitchcraft/internal/interfaces"
 	"github.com/teagan42/snitchcraft/internal/models"
@@ -19,9 +18,10 @@ import (
 )
 
 type OpenTelemetryMetrics struct {
-	meter             metric.Meter
-	requestCounter    metric.Int64Counter
-	heuristicCounters map[string]metric.Int64Counter
+	meter                metric.Meter
+	requestCounter       metric.Int64Counter
+	heuristicCounters    map[string]metric.Int64Counter
+	requestTimeHistogram metric.Int64Histogram
 }
 
 func SetupTracing() {
@@ -63,11 +63,21 @@ func NewOpenTelemetryMetrics(cfg models.Config) interfaces.MetricsPlugin {
 		panic(err)
 	}
 
+	histogram, err := meter.Int64Histogram(
+		"snitchcraft_http_request_duration_milliseconds",
+		metric.WithDescription("Duration of HTTP request processing prior to proxy in nanoseconds"),
+		metric.WithUnit("ms"),
+	)
+	if err != nil {
+		panic(err)
+	}
+
 	fmt.Println("[metrics] OpenTelemetryMetrics initialized")
 	return &OpenTelemetryMetrics{
-		meter:             meter,
-		requestCounter:    requestCounter,
-		heuristicCounters: make(map[string]metric.Int64Counter),
+		meter:                meter,
+		requestCounter:       requestCounter,
+		heuristicCounters:    make(map[string]metric.Int64Counter),
+		requestTimeHistogram: histogram,
 	}
 }
 
@@ -77,43 +87,55 @@ func (m *OpenTelemetryMetrics) Name() string {
 
 func (m *OpenTelemetryMetrics) Start(resultChannel chan models.RequestResult) error {
 	go func() {
-		for {
-			select {
-			case result := <-resultChannel:
-				m.requestCounter.Add(context.Background(), 1,
+		for result := range resultChannel {
+			m.requestCounter.Add(context.Background(), 1,
+				metric.WithAttributes(
+					attribute.String("method", result.Request.Method),
+					attribute.String("path", result.Request.URL.Path),
+				),
+			)
+			var atributes = append([]attribute.KeyValue{
+				attribute.String("method", result.Request.Method),
+				attribute.String("path", result.Request.URL.Path)},
+				utils.Map(result.HeuristicResults, func(r models.HeuristicResult) attribute.KeyValue {
+					return attribute.Bool(fmt.Sprintf("heuristic_%s", r.Name), r.Issue != "")
+				})...,
+			)
+			m.requestTimeHistogram.Record(context.Background(), int64(result.Duration),
+				metric.WithAttributes(
+					atributes...,
+				),
+			)
+
+			for _, heuristicResult := range utils.Filter(result.HeuristicResults, func(r models.HeuristicResult) bool {
+				return r.Issue != ""
+			}) {
+				counter, ok := m.heuristicCounters[heuristicResult.Name]
+				if !ok {
+					newCounter, err := m.meter.Int64Counter(
+						"snitchcraft_heuristic_"+heuristicResult.Name+"_hits",
+						metric.WithDescription("Heuristic matches"),
+					)
+					if err != nil {
+						fmt.Printf("[metrics] Failed to create counter for %s: %v\n", heuristicResult.Name, err)
+						continue
+					}
+					m.heuristicCounters[heuristicResult.Name] = newCounter
+					counter = newCounter
+				}
+				counter.Add(context.Background(), 1,
 					metric.WithAttributes(
-						attribute.String("method", result.Request.Method),
-						attribute.String("path", result.Request.URL.Path),
+						[]attribute.KeyValue{
+							attribute.String("method", result.Request.Method),
+							attribute.String("path", result.Request.URL.Path),
+							attribute.String("heuristic", heuristicResult.Name),
+						}...,
 					),
 				)
-
-				for _, heuristicResult := range utils.Filter(result.HeuristicResults, func(r models.HeuristicResult) bool {
-					return r.Issue != ""
-				}) {
-					counter, ok := m.heuristicCounters[heuristicResult.Name]
-					if !ok {
-						newCounter, err := m.meter.Int64Counter(
-							"snitchcraft_heuristic_"+heuristicResult.Name+"_hits",
-							metric.WithDescription("Heuristic matches"),
-						)
-						if err != nil {
-							fmt.Printf("[metrics] Failed to create counter for %s: %v\n", heuristicResult.Name, err)
-							continue
-						}
-						m.heuristicCounters[heuristicResult.Name] = newCounter
-						counter = newCounter
-					}
-					counter.Add(context.Background(), 1,
-						metric.WithAttributes(
-							attribute.String("heuristic", heuristicResult.Name),
-						),
-					)
-				}
-			default:
-				time.Sleep(100 * time.Millisecond)
 			}
 		}
 	}()
+	fmt.Println("[metrics] OpenTelemetryMetrics started")
 	return nil
 }
 

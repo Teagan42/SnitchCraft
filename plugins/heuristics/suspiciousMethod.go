@@ -8,7 +8,7 @@ import (
 type SuspiciousMethodCheck struct{}
 
 func (s SuspiciousMethodCheck) Name() string {
-	return "Suspicious HTTP Method"
+	return "suspicious_http_method"
 }
 
 func (s SuspiciousMethodCheck) Check(r *http.Request) (string, bool) {

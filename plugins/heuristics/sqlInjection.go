@@ -11,12 +11,12 @@ var sqlInjectionRegex = regexp.MustCompile(`(?i)(union\s+select|or\s+1=1|drop\s+
 type SQLInjectionCheck struct{}
 
 func (s SQLInjectionCheck) Name() string {
-	return "SQL Injection"
+	return "sql_injection"
 }
 
 func (s SQLInjectionCheck) Check(r *http.Request) (string, bool) {
 	if sqlInjectionRegex.MatchString(r.URL.RawQuery) {
-		return "Query contains possible SQL injection", true
+		return "Query contains possible sql_injection", true
 	}
 	return "", false
 }

@@ -28,13 +28,18 @@ func SyncRunHeuristicChecks(
 	var results []models.HeuristicResult
 
 	for _, heuristic := range heuristics.RegisteredHeuristics {
-		if name, ok := heuristic.Check(req); ok {
-			var result = models.HeuristicResult{
+		var issue, err = heuristic.Check(req)
+		if err {
+			results = append(results, models.HeuristicResult{
 				Name:  heuristic.Name(),
-				Issue: name,
-			}
-			// Append to results
-			results = append(results, result)
+				Issue: issue,
+			})
+		} else {
+			// If heuristic does not match, we still want to return it with an empty issue
+			results = append(results, models.HeuristicResult{
+				Name:  heuristic.Name(),
+				Issue: "",
+			})
 		}
 	}
 
@@ -45,19 +50,23 @@ func AsyncRunHeuristicChecks(
 	req *http.Request,
 ) []models.HeuristicResult {
 	var wg sync.WaitGroup
-	resultChan := make(chan models.HeuristicResult, 10*len(heuristics.RegisteredHeuristics))
+	resultChan := make(chan models.HeuristicResult, len(heuristics.RegisteredHeuristics))
 
 	for _, heuristic := range heuristics.RegisteredHeuristics {
 		wg.Add(1)
 		go func(h interfaces.Heuristic) {
 			defer wg.Done()
-			if name, ok := h.Check(req); ok {
-				var result = models.HeuristicResult{
+			var issue, err = h.Check(req)
+			if err {
+				resultChan <- models.HeuristicResult{
 					Name:  h.Name(),
-					Issue: name,
+					Issue: issue,
 				}
-				// Send result to result channel
-				resultChan <- result
+			} else {
+				resultChan <- models.HeuristicResult{
+					Name:  h.Name(),
+					Issue: "",
+				}
 			}
 		}(heuristic)
 	}

@@ -61,6 +61,13 @@ To run the test suite:
 go test ./...
 ```
 
+**NOTE**
+If you are working on Apple Silicon, you must specify the Go architecture as `amd64` before running tests:
+
+```shell
+go env -w GOARCH=amd64
+```
+
 This will execute all unit and integration tests across the project.
 
 ## 🐳 Docker Deployment

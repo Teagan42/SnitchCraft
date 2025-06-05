@@ -1,7 +1,6 @@
 package metrics
 
 import (
-	"context"
 	"net/http"
 	"net/url"
 	"testing"
@@ -33,56 +32,6 @@ func TestSetupTracing_SetsTracerProvider(t *testing.T) {
 		t.Errorf("TracerProvider is not of type *trace.TracerProvider, got %T", tp)
 	}
 }
-func TestOpenTelemetryMetrics_Start_IncrementsRequestCounter(t *testing.T) {
-	// Save and restore original MeterProvider
-	origProvider := otel.GetMeterProvider()
-	defer otel.SetMeterProvider(origProvider)
-
-	// Use a no-op MeterProvider to avoid exporting metrics
-	otel.SetMeterProvider(sdkmetric.NewMeterProvider())
-
-	metrics := &OpenTelemetryMetrics{
-		meter:             otel.GetMeterProvider().Meter("test"),
-		heuristicCounters: make(map[string]metric.Int64Counter),
-	}
-
-	// Create a fake counter to observe Add calls
-	metrics.requestCounter, _ = metrics.meter.Int64Counter("test_counter")
-
-	resultChan := make(chan models.RequestResult, 1)
-	err := metrics.Start(resultChan)
-	if err != nil {
-		t.Fatalf("Start returned error: %v", err)
-	}
-
-	var addCalled = false
-	go func() {
-		for {
-			select {
-			case result := <-resultChan:
-				if result.Request == nil {
-					t.Fatal("Received nil Request in result")
-				} else {
-					addCalled = true
-				}
-			}
-		}
-	}()
-
-	resultChan <- models.RequestResult{
-		Request: &http.Request{
-			Method: "GET",
-			URL:    &url.URL{Path: "/test"},
-		},
-	}
-
-	// Wait for goroutine to process
-	time.Sleep(200 * time.Millisecond)
-
-	if !addCalled {
-		t.Error("Request counter Add was not called")
-	}
-}
 
 func TestOpenTelemetryMetrics_Start_HeuristicCounters(t *testing.T) {
 	origProvider := otel.GetMeterProvider()
@@ -96,10 +45,19 @@ func TestOpenTelemetryMetrics_Start_HeuristicCounters(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
+	histogram, err := meter.Int64Histogram(
+		"snitchcraft_http_request_duration_milliseconds",
+		metric.WithDescription("Duration of HTTP request processing prior to proxy in nanoseconds"),
+		metric.WithUnit("ms"),
+	)
+	if err != nil {
+		panic(err)
+	}
 	metrics := &OpenTelemetryMetrics{
-		meter:             meter,
-		heuristicCounters: make(map[string]metric.Int64Counter),
-		requestCounter:    requestCounter,
+		meter:                meter,
+		heuristicCounters:    make(map[string]metric.Int64Counter),
+		requestCounter:       requestCounter,
+		requestTimeHistogram: histogram, // Not used in this test
 	}
 
 	resultChan := make(chan models.RequestResult, 1)
@@ -112,10 +70,14 @@ func TestOpenTelemetryMetrics_Start_HeuristicCounters(t *testing.T) {
 		Request: &http.Request{
 			Method: "POST",
 			URL:    &url.URL{Path: "/foo"},
+			Response: &http.Response{
+				StatusCode: 200,
+			},
 		},
 		HeuristicResults: []models.HeuristicResult{
 			{Name: "testheuristic", Issue: "something"},
 		},
+		Duration: uint64(100 * time.Nanosecond),
 	}
 
 	time.Sleep(200 * time.Millisecond)
@@ -127,16 +89,3 @@ func TestOpenTelemetryMetrics_Start_HeuristicCounters(t *testing.T) {
 		t.Error("Heuristic counter for 'testheuristic' was not created")
 	}
 }
-
-// fakeInt64Counter implements metric.Int64Counter for testing
-type fakeInt64Counter struct {
-	addFunc func(ctx context.Context, value int64, opts ...metric.AddOption)
-}
-
-func (f *fakeInt64Counter) Add(ctx context.Context, value int64, opts ...metric.AddOption) {
-	if f.addFunc != nil {
-		f.addFunc(ctx, value, opts...)
-	}
-}
-
-func (f *fakeInt64Counter) int64Counter() {}

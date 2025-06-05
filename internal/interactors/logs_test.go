@@ -4,6 +4,7 @@ import (
 	"errors"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/teagan42/snitchcraft/internal/interfaces"
 	"github.com/teagan42/snitchcraft/internal/models"
@@ -61,6 +62,8 @@ func TestLogWorker_StartsRegisteredLoggers(t *testing.T) {
 	cfg := models.Config{}
 	LogWorker(cfg)
 
+	time.Sleep(200 * time.Millisecond) // Allow goroutines to start
+
 	if !mock1.startCalled {
 		t.Errorf("mock1 logger Start was not called")
 	}
@@ -88,6 +91,8 @@ func TestLogWorker_LoggerStartError(t *testing.T) {
 
 	cfg := models.Config{}
 	LogWorker(cfg)
+
+	time.Sleep(200 * time.Millisecond) // Allow goroutine to attempt start
 
 	if !mock.startCalled {
 		t.Errorf("mock logger Start was not called")

@@ -40,6 +40,7 @@ type ResponseLogEntry struct {
 	Malicious        bool              `json:"malicious"`
 	HeuristicResults []HeuristicResult `json:"heuristic_results"`
 	StatusCode       int               `json:"status_code"`
+	Duration         uint64            `json:"duration"`
 }
 
 func (r ResponseLogEntry) GetTraceID() string      { return r.TraceID }
@@ -55,3 +56,6 @@ func (r ResponseLogEntry) IsMalicious() bool {
 func (r ResponseLogEntry) GetHeuristicResults() []HeuristicResult { return r.HeuristicResults }
 func (r ResponseLogEntry) GetStatusCode() int                     { return r.StatusCode }
 func (r ResponseLogEntry) GetType() string                        { return "response" }
+func (r ResponseLogEntry) GetDuration() uint64 {
+	return r.Duration
+}

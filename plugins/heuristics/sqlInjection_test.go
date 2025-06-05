@@ -7,8 +7,8 @@ import (
 
 func TestSQLInjectionCheck_Name(t *testing.T) {
 	s := SQLInjectionCheck{}
-	if s.Name() != "SQL Injection" {
-		t.Errorf("expected Name to be 'SQL Injection', got '%s'", s.Name())
+	if s.Name() != "sql_injection" {
+		t.Errorf("expected Name to be 'sql_injection', got '%s'", s.Name())
 	}
 }
 
@@ -20,7 +20,7 @@ func TestSQLInjectionCheck_Check(t *testing.T) {
 		wantResult bool
 	}{
 		{
-			name:       "No SQL injection",
+			name:       "No sql_injection",
 			rawQuery:   "id=5&name=foo",
 			wantMsg:    "",
 			wantResult: false,
@@ -28,25 +28,25 @@ func TestSQLInjectionCheck_Check(t *testing.T) {
 		{
 			name:       "Union select injection",
 			rawQuery:   "id=1 UNION SELECT username, password FROM users",
-			wantMsg:    "Query contains possible SQL injection",
+			wantMsg:    "Query contains possible sql_injection",
 			wantResult: true,
 		},
 		{
 			name:       "OR 1=1 injection",
 			rawQuery:   "user=admin' OR 1=1 --",
-			wantMsg:    "Query contains possible SQL injection",
+			wantMsg:    "Query contains possible sql_injection",
 			wantResult: true,
 		},
 		{
 			name:       "Drop table injection",
 			rawQuery:   "q=DROP TABLE users",
-			wantMsg:    "Query contains possible SQL injection",
+			wantMsg:    "Query contains possible sql_injection",
 			wantResult: true,
 		},
 		{
 			name:       "Case insensitive match",
 			rawQuery:   "q=UnIoN SeLeCt * from users",
-			wantMsg:    "Query contains possible SQL injection",
+			wantMsg:    "Query contains possible sql_injection",
 			wantResult: true,
 		},
 	}
