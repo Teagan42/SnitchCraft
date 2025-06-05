@@ -1,7 +1,5 @@
 ![coverage](https://raw.githubusercontent.com/Teagan42/SnitchCraft/badges/.badges/main/coverage.svg)
 
-⸻
-
 # SnitchCraft
 
 SnitchCraft is a modular, pluggable HTTP proxy designed for security analysis and observability. It intercepts HTTP traffic, applies heuristic checks to detect potential threats, and forwards the results to various logging and metrics backends.
