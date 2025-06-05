@@ -1,7 +1,5 @@
 ![coverage](https://raw.githubusercontent.com/Teagan42/SnitchCraft/badges/.badges/main/coverage.svg)
 
-Certainly! Based on the recent enhancements in the feat/heuristic-channel branch of the SnitchCraft project, here’s an updated README.md that reflects the new architecture and features:
-
 ⸻
 
 # SnitchCraft
@@ -18,6 +16,7 @@ SnitchCraft is a modular, pluggable HTTP proxy designed for security analysis an
 
 ## 📁 Project Structure
 
+```
 .
 ├── cmd/
 │   └── server/           # Entry point for the proxy server
@@ -33,6 +32,7 @@ SnitchCraft is a modular, pluggable HTTP proxy designed for security analysis an
 ├── Dockerfile            # Docker image definition
 ├── docker-compose.yml    # Docker Compose configuration
 └── README.md             # Project documentation
+```
 
 ## ⚙️ Configuration
 
