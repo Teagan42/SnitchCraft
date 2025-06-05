@@ -9,12 +9,12 @@ import (
 
 func Load() (models.Config, error) {
 	return Validate(models.Config{
+		ListenPort:     getEnv("LISTEN_PORT", ":8080"),
 		BackendURL:     getEnv("BACKEND_URL", ""),
 		ParallelChecks: getEnv("PARALLEL_CHECKS", "true") == "true",
-		LogForwardURL:  getEnv("LOG_FORWARD_URL", ""),
-		MetricsPort:    getEnv("METRICS_PORT", "9090"),
-		ListenPort:     getEnv("LISTEN_PORT", ":8080"),
-		OTELExporter:   getEnv("OTEL_EXPORTER", "stdout"),
+		LokiUrl:        getEnv("LOKI_URL", ""),
+		PrometheusPort: getEnv("PROMETHEUS_PORT", ""),
+		OTELMetricUrl:  getEnv("OTEL_METRIC_URL", ""),
 	})
 }
 

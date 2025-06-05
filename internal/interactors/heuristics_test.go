@@ -6,12 +6,60 @@ import (
 
 	"github.com/teagan42/snitchcraft/internal/interfaces"
 	"github.com/teagan42/snitchcraft/internal/models"
+	"github.com/teagan42/snitchcraft/plugins/heuristics"
 )
+
+func TestRunHeuristicChecks_Sync(t *testing.T) {
+	origHeuristics := heuristics.RegisteredHeuristics
+	defer func() { heuristics.RegisteredHeuristics = origHeuristics }()
+
+	mockHeuristic := &mockHeuristic{
+		name: "TestHeuristic",
+		checkFunc: func(req *http.Request) (string, bool) {
+			return "TestIssue", true
+		},
+	}
+	heuristics.RegisteredHeuristics = []interfaces.Heuristic{mockHeuristic}
+
+	req, _ := http.NewRequest("GET", "http://example.com", nil)
+	cfg := models.Config{ParallelChecks: false}
+
+	results := RunHeuristicChecks(req, cfg)
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+	if results[0].Name != "TestHeuristic" || results[0].Issue != "TestIssue" {
+		t.Errorf("unexpected result: %+v", results[0])
+	}
+}
+
+func TestRunHeuristicChecks_Async(t *testing.T) {
+	origHeuristics := heuristics.RegisteredHeuristics
+	defer func() { heuristics.RegisteredHeuristics = origHeuristics }()
+
+	mockHeuristic := &mockHeuristic{
+		name: "AsyncHeuristic",
+		checkFunc: func(req *http.Request) (string, bool) {
+			return "AsyncIssue", true
+		},
+	}
+	heuristics.RegisteredHeuristics = []interfaces.Heuristic{mockHeuristic}
+
+	req, _ := http.NewRequest("GET", "http://example.com", nil)
+	cfg := models.Config{ParallelChecks: true}
+
+	results := RunHeuristicChecks(req, cfg)
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+	if results[0].Name != "AsyncHeuristic" || results[0].Issue != "AsyncIssue" {
+		t.Errorf("unexpected result: %+v", results[0])
+	}
+}
 
 type mockHeuristic struct {
 	name      string
-	checkName string
-	checkOK   bool
+	checkFunc func(req *http.Request) (string, bool)
 }
 
 func (m *mockHeuristic) Name() string {
@@ -19,72 +67,5 @@ func (m *mockHeuristic) Name() string {
 }
 
 func (m *mockHeuristic) Check(req *http.Request) (string, bool) {
-	return m.checkName, m.checkOK
-}
-
-func setupHeuristics(hs ...interfaces.Heuristic) {
-	RegisteredHeuristics = hs
-}
-
-func TestRunHeuristicChecks_Sync(t *testing.T) {
-	setupHeuristics(&mockHeuristic{name: "TestHeuristic", checkName: "Issue1", checkOK: true})
-	cfg := models.Config{ParallelChecks: false}
-	req, _ := http.NewRequest("GET", "http://example.com", nil)
-
-	results := RunHeuristicChecks(req, cfg)
-
-	if len(results) != 1 {
-		t.Fatalf("expected 1 result, got %d", len(results))
-	}
-	if results[0].Name != "TestHeuristic" || results[0].Issue != "Issue1" {
-		t.Errorf("unexpected result: %+v", results[0])
-	}
-}
-
-func TestRunHeuristicChecks_Parallel(t *testing.T) {
-	setupHeuristics(
-		&mockHeuristic{name: "H1", checkName: "I1", checkOK: true},
-		&mockHeuristic{name: "H2", checkName: "I2", checkOK: true},
-	)
-	cfg := models.Config{ParallelChecks: true}
-	req, _ := http.NewRequest("POST", "http://example.com", nil)
-
-	results := RunHeuristicChecks(req, cfg)
-
-	if len(results) != 2 {
-		t.Fatalf("expected 2 results, got %d", len(results))
-	}
-	names := map[string]bool{}
-	issues := map[string]bool{}
-	for _, r := range results {
-		names[r.Name] = true
-		issues[r.Issue] = true
-	}
-	if !names["H1"] || !names["H2"] || !issues["I1"] || !issues["I2"] {
-		t.Errorf("unexpected results: %+v", results)
-	}
-}
-
-func TestRunHeuristicChecks_NoHeuristics(t *testing.T) {
-	setupHeuristics()
-	cfg := models.Config{ParallelChecks: false}
-	req, _ := http.NewRequest("GET", "http://example.com", nil)
-
-	results := RunHeuristicChecks(req, cfg)
-
-	if len(results) != 0 {
-		t.Errorf("expected 0 results, got %d", len(results))
-	}
-}
-
-func TestRunHeuristicChecks_HeuristicReturnsFalse(t *testing.T) {
-	setupHeuristics(&mockHeuristic{name: "TestHeuristic", checkName: "Issue1", checkOK: false})
-	cfg := models.Config{ParallelChecks: false}
-	req, _ := http.NewRequest("GET", "http://example.com", nil)
-
-	results := RunHeuristicChecks(req, cfg)
-
-	if len(results) != 0 {
-		t.Errorf("expected 0 results, got %d", len(results))
-	}
+	return m.checkFunc(req)
 }

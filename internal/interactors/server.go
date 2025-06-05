@@ -1,6 +1,7 @@
 package interactors
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -10,22 +11,17 @@ import (
 	"github.com/teagan42/snitchcraft/utils"
 
 	"maps"
-
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
-	"go.opentelemetry.io/otel/sdk/resource"
-	"go.opentelemetry.io/otel/sdk/trace"
 )
 
 var resultChan = make(chan models.RequestResult, 10)
 
 func StartProxyServer(cfg models.Config) error {
-	setupTracing()
-
-	go MetricsWorker(cfg)
+	fmt.Printf("[interactors][server] starting proxy server with config: %+v\n", cfg)
+	go MetricsWorker(cfg, resultChan)
 	go LogWorker(cfg)
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Printf("[interactors][server] received request: %s %s\n", r.Method, r.URL.Path)
 		r.Header.Set("X-Trace-ID", uuid.New().String())
 		logsChannel <- models.RequestLogEntry{
 			Time:    time.Now(),
@@ -101,19 +97,11 @@ func StartProxyServer(cfg models.Config) error {
 		maps.Copy(w.Header(), resp.Header)
 		w.WriteHeader(resp.StatusCode)
 		if _, err := io.Copy(w, resp.Body); err != nil {
-			http.Error(w, "Error copying response body", http.StatusInternalServerError)
+			http.Error(w, "[interactors][server] error copying response body", http.StatusInternalServerError)
 			return
 		}
 	})
 
+	fmt.Printf("[interactors][server] starting proxy server on %s\n", cfg.ListenPort)
 	return http.ListenAndServe(cfg.ListenPort, nil)
-}
-
-func setupTracing() {
-	exp, _ := stdouttrace.New(stdouttrace.WithPrettyPrint())
-	tp := trace.NewTracerProvider(
-		trace.WithBatcher(exp),
-		trace.WithResource(resource.Empty()),
-	)
-	otel.SetTracerProvider(tp)
 }

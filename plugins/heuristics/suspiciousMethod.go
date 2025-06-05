@@ -1,9 +1,8 @@
 package heuristics
 
 import (
+	"fmt"
 	"net/http"
-
-	"github.com/teagan42/snitchcraft/internal/interactors"
 )
 
 type SuspiciousMethodCheck struct{}
@@ -22,5 +21,6 @@ func (s SuspiciousMethodCheck) Check(r *http.Request) (string, bool) {
 }
 
 func init() {
-	interactors.RegisterHeuristic(SuspiciousMethodCheck{})
+	fmt.Printf("[heuristics] registering SuspiciousMethodCheck heuristic...\n")
+	RegisterHeuristic(SuspiciousMethodCheck{})
 }

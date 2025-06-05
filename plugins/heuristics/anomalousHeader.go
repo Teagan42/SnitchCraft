@@ -1,10 +1,9 @@
 package heuristics
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
-
-	"github.com/teagan42/snitchcraft/internal/interactors"
 )
 
 type AnomalousHeaderCheck struct{}
@@ -28,5 +27,6 @@ func (h AnomalousHeaderCheck) Check(r *http.Request) (string, bool) {
 }
 
 func init() {
-	interactors.RegisterHeuristic(AnomalousHeaderCheck{})
+	fmt.Println("[heuristics] registering AnomalousHeaderCheck heuristic...")
+	RegisterHeuristic(AnomalousHeaderCheck{})
 }

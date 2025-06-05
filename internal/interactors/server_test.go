@@ -1,8 +1,14 @@
 package interactors
 
-import (
-	"testing"
-)
+// import (
+// 	"bytes"
+// 	"io"
+// 	"net/http"
+// 	"net/http/httptest"
+// 	"testing"
+
+// 	"github.com/teagan42/snitchcraft/internal/models"
+// )
 
 // func TestStartProxyServer_Forbidden(t *testing.T) {
 // 	// Setup config with dummy backend URL and listen port
@@ -11,13 +17,12 @@ import (
 // 		ListenPort: ":0", // random port
 // 	}
 
-// 	// Start server in goroutine
+// 	// Start server
 // 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 // 		StartProxyServer(cfg)
 // 	}))
 // 	defer server.Close()
 
-// 	// Make request to server
 // 	req, _ := http.NewRequest("DEBUG", server.URL, nil)
 // 	client := &http.Client{}
 // 	resp, err := client.Do(req)
@@ -35,7 +40,6 @@ import (
 // }
 
 // func TestStartProxyServer_ProxySuccess(t *testing.T) {
-// 	// Setup a dummy backend server
 // 	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 // 		w.Header().Set("X-Backend", "yes")
 // 		w.WriteHeader(http.StatusOK)
@@ -48,17 +52,12 @@ import (
 // 		ListenPort: ":0",
 // 	}
 
-// 	// Start the proxy server
-// 	var wg sync.WaitGroup
-// 	wg.Add(1)
-// 	var proxy *httptest.Server
-// 	proxy = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+// 	// Start proxy server
+// 	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 // 		StartProxyServer(cfg)
-// 		wg.Done()
 // 	}))
 // 	defer proxy.Close()
 
-// 	// Make request to proxy
 // 	req, _ := http.NewRequest("GET", proxy.URL, nil)
 // 	client := &http.Client{}
 // 	resp, err := client.Do(req)
@@ -84,17 +83,11 @@ import (
 // 		ListenPort: ":0",
 // 	}
 
-// 	// Start the proxy server
-// 	var wg sync.WaitGroup
-// 	wg.Add(1)
-// 	var proxy *httptest.Server
-// 	proxy = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+// 	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 // 		StartProxyServer(cfg)
-// 		wg.Done()
 // 	}))
 // 	defer proxy.Close()
 
-// 	// Make request to proxy
 // 	req, _ := http.NewRequest("GET", proxy.URL, nil)
 // 	client := &http.Client{}
 // 	resp, err := client.Do(req)
@@ -110,13 +103,3 @@ import (
 // 		t.Errorf("expected bad gateway message in body, got %s", string(body))
 // 	}
 // }
-
-func TestSetupTracing_NoPanic(t *testing.T) {
-	// Just ensure setupTracing does not panic
-	defer func() {
-		if r := recover(); r != nil {
-			t.Errorf("setupTracing panicked: %v", r)
-		}
-	}()
-	setupTracing()
-}

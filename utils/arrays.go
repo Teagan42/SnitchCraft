@@ -14,3 +14,13 @@ func Do[T any](in []T, f func(T)) []T {
 	}
 	return in
 }
+
+func Filter[T any](in []T, f func(T) bool) []T {
+	out := make([]T, 0)
+	for _, v := range in {
+		if f(v) {
+			out = append(out, v)
+		}
+	}
+	return out
+}

@@ -1,10 +1,9 @@
 package heuristics
 
 import (
+	"fmt"
 	"net/http"
 	"regexp"
-
-	"github.com/teagan42/snitchcraft/internal/interactors"
 )
 
 var sqlInjectionRegex = regexp.MustCompile(`(?i)(union\s+select|or\s+1=1|drop\s+table)`)
@@ -23,5 +22,6 @@ func (s SQLInjectionCheck) Check(r *http.Request) (string, bool) {
 }
 
 func init() {
-	interactors.RegisterHeuristic(SQLInjectionCheck{})
+	fmt.Println("[heuristics] registering SQLInjectionCheck heuristic...")
+	RegisterHeuristic(SQLInjectionCheck{})
 }

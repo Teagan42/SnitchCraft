@@ -6,14 +6,8 @@ import (
 
 	"github.com/teagan42/snitchcraft/internal/interfaces"
 	"github.com/teagan42/snitchcraft/internal/models"
-	"github.com/teagan42/snitchcraft/utils"
+	"github.com/teagan42/snitchcraft/plugins/heuristics"
 )
-
-var RegisteredHeuristics []interfaces.Heuristic
-
-func RegisterHeuristic(h interfaces.Heuristic) {
-	RegisteredHeuristics = append(RegisteredHeuristics, h)
-}
 
 func RunHeuristicChecks(
 	req *http.Request,
@@ -25,12 +19,7 @@ func RunHeuristicChecks(
 	} else {
 		results = SyncRunHeuristicChecks(req)
 	}
-	return utils.Do(
-		results,
-		func(result models.HeuristicResult) {
-			metricsChannels.heuristicsChan <- result
-		},
-	)
+	return results
 }
 
 func SyncRunHeuristicChecks(
@@ -38,14 +27,12 @@ func SyncRunHeuristicChecks(
 ) []models.HeuristicResult {
 	var results []models.HeuristicResult
 
-	for _, heuristic := range RegisteredHeuristics {
+	for _, heuristic := range heuristics.RegisteredHeuristics {
 		if name, ok := heuristic.Check(req); ok {
 			var result = models.HeuristicResult{
 				Name:  heuristic.Name(),
 				Issue: name,
 			}
-			// Send result to metrics channel
-			metricsChannels.heuristicsChan <- result
 			// Append to results
 			results = append(results, result)
 		}
@@ -58,9 +45,9 @@ func AsyncRunHeuristicChecks(
 	req *http.Request,
 ) []models.HeuristicResult {
 	var wg sync.WaitGroup
-	resultChan := make(chan models.HeuristicResult, len(RegisteredHeuristics))
+	resultChan := make(chan models.HeuristicResult, 10*len(heuristics.RegisteredHeuristics))
 
-	for _, heuristic := range RegisteredHeuristics {
+	for _, heuristic := range heuristics.RegisteredHeuristics {
 		wg.Add(1)
 		go func(h interfaces.Heuristic) {
 			defer wg.Done()
@@ -69,8 +56,6 @@ func AsyncRunHeuristicChecks(
 					Name:  h.Name(),
 					Issue: name,
 				}
-				// Send result to metrics channel
-				metricsChannels.heuristicsChan <- result
 				// Send result to result channel
 				resultChan <- result
 			}

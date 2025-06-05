@@ -1,10 +1,9 @@
 package heuristics
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
-
-	"github.com/teagan42/snitchcraft/internal/interactors"
 )
 
 type SuspiciousUserAgent struct{}
@@ -22,5 +21,6 @@ func (u SuspiciousUserAgent) Check(r *http.Request) (string, bool) {
 }
 
 func init() {
-	interactors.RegisterHeuristic(SuspiciousUserAgent{})
+	fmt.Printf("[heuristics] registering SuspiciousUserAgent heuristic...\n")
+	RegisterHeuristic(SuspiciousUserAgent{})
 }

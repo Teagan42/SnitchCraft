@@ -1,31 +1,26 @@
 package interactors
 
 import (
+	"fmt"
+
 	"github.com/teagan42/snitchcraft/internal/interfaces"
 	"github.com/teagan42/snitchcraft/internal/models"
 	"github.com/teagan42/snitchcraft/plugins/loggers"
+	"github.com/teagan42/snitchcraft/utils"
 )
 
 var logsChannel chan models.Loggable = make(chan models.Loggable, 100)
 
 func LogWorker(cfg models.Config) {
-	var logSink interfaces.LogSink
-	if cfg.LogForwardURL != "" {
-		logSink = &loggers.StdoutLogger{}
-	} else {
-		logSink = &loggers.StdoutLogger{}
-	}
-
-	for {
-		select {
-		case log := <-logsChannel:
-			if err := logSink.Log(log); err != nil {
-				// Handle error, e.g., log to stderr or retry
-				continue
+	fmt.Println("[interactors][logs] starting LogWorker...")
+	utils.Do(loggers.RegisteredLoggers, func(l func(cfg models.Config) interfaces.Logger) {
+		logger := l(cfg)
+		if logger != nil {
+			fmt.Printf("[interactors][logs] starting logger: %s\n", logger.Name())
+			if err := logger.Start(logsChannel); err != nil {
+				fmt.Printf("[interactors][logs] failed to start logger %s: %v\n", logger.Name(), err)
 			}
-		default:
-			// No logs to process, just continue
-			continue
 		}
-	}
+	})
+	fmt.Println("[interactors][logs] started LogWorker...")
 }

@@ -1,8 +1,7 @@
 package interactors
 
 import (
-	"net/http"
-	"sync/atomic"
+	"fmt"
 
 	"github.com/teagan42/snitchcraft/internal/interfaces"
 	"github.com/teagan42/snitchcraft/internal/models"
@@ -10,45 +9,17 @@ import (
 	"github.com/teagan42/snitchcraft/utils"
 )
 
-type MetricsChannels struct {
-	heuristicsChan chan models.HeuristicResult
-	requestChan    chan *http.Request
-}
+func MetricsWorker(cfg models.Config, resultsChannel chan models.RequestResult) {
+	fmt.Printf("[interactors][metrics] starting MetricsWorker with config: %+v\n", cfg)
 
-var metricsChannels = &MetricsChannels{
-	heuristicsChan: make(chan models.HeuristicResult, 100),
-	requestChan:    make(chan *http.Request, 100),
-}
-
-func MetricsWorker(cfg models.Config) {
-	var heuristicCounter utils.ConcurrentCounter = utils.ConcurrentCounter{}
-	var requestStats models.RequestStatsCounter = models.RequestStatsCounter{
-		TotalRequests:  atomic.Uint64{},
-		TotalMalicious: atomic.Uint64{},
-		ReturnCodes:    utils.ConcurrentCounter{},
-	}
-	var metricsSink interfaces.MetricsSink
-	if cfg.OTELExporter != "" {
-		metricsSink = &metrics.PrometheusMetrics{}
-	} else {
-		metricsSink = &metrics.PrometheusMetrics{}
-	}
-
-	for {
-		select {
-		case req := <-metricsChannels.requestChan:
-			requestStats.TotalRequests.Add(1)
-			requestStats.ReturnCodes.Inc(req.Method)
-			metricsSink.UpdateRequestStats(requestStats.ToModel())
-		case result := <-metricsChannels.heuristicsChan:
-			if result.Issue == "" {
-				continue // No issue, nothing to do
+	utils.Do(metrics.RegisteredMetricsPlugins, func(p func(cfg models.Config) interfaces.MetricsPlugin) {
+		plugin := p(cfg)
+		if plugin != nil {
+			fmt.Printf("[interactors][metrics] starting metrics plugin: %s\n", plugin.Name())
+			if err := plugin.Start(resultsChannel); err != nil {
+				fmt.Printf("[interactors[metrics] failed to start metrics plugin %s: %v\n", plugin.Name(), err)
 			}
-			heuristicCounter.Inc(result.Name)
-			metricsSink.UpdateHeuristicStats(heuristicCounter.Snapshot())
-		default:
-			// No messages, just continue
-			continue
 		}
-	}
+	})
+	fmt.Println("[interactors][metrics] started MetricsWorker...")
 }
