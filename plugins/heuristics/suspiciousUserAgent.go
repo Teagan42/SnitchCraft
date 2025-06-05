@@ -1,22 +1,26 @@
-package plugins
+package heuristics
 
-import "net/http"
-import "strings"
+import (
+	"fmt"
+	"net/http"
+	"strings"
+)
 
 type SuspiciousUserAgent struct{}
 
 func (u SuspiciousUserAgent) Name() string {
-    return "Suspicious User-Agent"
+	return "suspicious_user_agent"
 }
 
 func (u SuspiciousUserAgent) Check(r *http.Request) (string, bool) {
-    ua := strings.ToLower(r.Header.Get("User-Agent"))
-    if strings.Contains(ua, "curl") || strings.Contains(ua, "python") {
-        return "Detected script-like User-Agent", true
-    }
-    return "", false
+	ua := strings.ToLower(r.Header.Get("User-Agent"))
+	if strings.Contains(ua, "curl") || strings.Contains(ua, "python") {
+		return "Detected script-like User-Agent", true
+	}
+	return "", false
 }
 
 func init() {
-    RegisterCheck(SuspiciousUserAgent{})
+	fmt.Printf("[heuristics] registering SuspiciousUserAgent heuristic...\n")
+	RegisterHeuristic(SuspiciousUserAgent{})
 }

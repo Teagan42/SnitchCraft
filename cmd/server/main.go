@@ -2,14 +2,16 @@ package main
 
 import (
 	"log"
-	"snitchcraft/internal/config/env"
-	"snitchcraft/internal/interactors"
+
+	"github.com/teagan42/snitchcraft/internal/config"
+	"github.com/teagan42/snitchcraft/internal/interactors"
 )
 
 func main() {
-	cfg, err := env.Load()
+	cfg, err := config.Load()
 	if err != nil {
 		log.Fatalf("config error: %v", err)
+		return
 	}
 
 	if err := interactors.StartProxyServer(cfg); err != nil {

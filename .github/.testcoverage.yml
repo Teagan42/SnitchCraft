@@ -1,0 +1,8 @@
+# Config file for go-test-coverage github action.
+
+profile: coverage.out
+threshold:
+  file: 0.0
+  package: 0.0
+  function: 0.0
+  total: 0.6

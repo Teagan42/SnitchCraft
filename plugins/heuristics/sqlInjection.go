@@ -1,8 +1,9 @@
-package plugins
+package heuristics
 
 import (
-    "net/http"
-    "regexp"
+	"fmt"
+	"net/http"
+	"regexp"
 )
 
 var sqlInjectionRegex = regexp.MustCompile(`(?i)(union\s+select|or\s+1=1|drop\s+table)`)
@@ -10,16 +11,17 @@ var sqlInjectionRegex = regexp.MustCompile(`(?i)(union\s+select|or\s+1=1|drop\s+
 type SQLInjectionCheck struct{}
 
 func (s SQLInjectionCheck) Name() string {
-    return "SQL Injection"
+	return "sql_injection"
 }
 
 func (s SQLInjectionCheck) Check(r *http.Request) (string, bool) {
-    if sqliRegex.MatchString(r.URL.RawQuery) {
-        return "Query contains possible SQL injection", true
-    }
-    return "", false
+	if sqlInjectionRegex.MatchString(r.URL.RawQuery) {
+		return "Query contains possible sql_injection", true
+	}
+	return "", false
 }
 
 func init() {
-    RegisterCheck(SQLInjectionCheck{})
+	fmt.Println("[heuristics] registering SQLInjectionCheck heuristic...")
+	RegisterHeuristic(SQLInjectionCheck{})
 }

@@ -1,52 +1,117 @@
 package interactors
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
-	"snitchcraft/internal/interfaces"
-	"snitchcraft/internal/models"
-	"snitchcraft/plugins/heuristics"
-	"snitchcraft/plugins/loggers"
-	"snitchcraft/plugins/metrics"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/teagan42/snitchcraft/internal/models"
+	"github.com/teagan42/snitchcraft/utils"
+
+	"maps"
 )
 
-var logSink interfaces.LogSink = &loggers.StdoutLogger{}
-var metricsSink interfaces.MetricsSink = &metrics.PrometheusMetrics{}
+var resultChan = make(chan models.RequestResult, 10)
 
-func StartProxyServer() error {
+func LogResponse(r *http.Request, results []models.HeuristicResult, start time.Time) {
+	logsChannel <- models.ResponseLogEntry{
+		Time:             time.Now(),
+		Method:           r.Method,
+		Path:             r.URL.Path,
+		Headers:          maps.Clone(r.Header),
+		StatusCode:       r.Response.StatusCode,
+		Duration:         uint64(time.Since(start).Nanoseconds()),
+		HeuristicResults: results,
+		TraceID:          r.Header.Get("X-Trace-ID"),
+		Malicious:        len(utils.Map(results, func(hr models.HeuristicResult) bool { return hr.Issue != "" })) > 0,
+	}
+}
+
+func StartProxyServer(cfg models.Config) error {
+	fmt.Printf("[interactors][server] starting proxy server with config: %+v\n", cfg)
+	go MetricsWorker(cfg, resultChan)
+	go LogWorker(cfg)
+
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		metricsSink.IncRequest()
+		var start = time.Now()
+		fmt.Printf("[interactors][server] received request: %s %s\n", r.Method, r.URL.Path)
+		r.Header.Set("X-Trace-ID", uuid.New().String())
+		var results = RunHeuristicChecks(r, cfg)
 
-		// Analyze heuristics
-		reasons := []string{}
-		for _, h := range heuristics.RegisteredHeuristics {
-			if reason, bad := h.Check(r); bad {
-				reasons = append(reasons, fmt.Sprintf("%s: %s", h.Name(), reason))
+		// pass to logging via channel
+		resultChan <- models.RequestResult{
+			Request:          r,
+			HeuristicResults: results,
+			Duration:         uint64(time.Since(start).Milliseconds()),
+		}
+		fmt.Printf("[interactors][server] heuristic checks completed for %s %s, results: %+v\n", r.Method, r.URL.Path, results)
+		if len(utils.Filter(results, func(r models.HeuristicResult) bool {
+			return len(r.Issue) > 0
+		})) > 0 {
+			r.Response = &http.Response{
+				StatusCode: http.StatusForbidden,
+				Header:     http.Header{"Content-Type": []string{"application/json"}},
+				Body:       io.NopCloser(io.Reader(nil)), // no body for forbidden response
+				Status:     "403 Forbidden",
+				Request:    r,
 			}
+			LogResponse(r, results, start)
+			w.WriteHeader(http.StatusForbidden)
+			w.Header().Set("Content-Type", "application/json")
+			_, err := w.Write([]byte(`{"error": "Forbidden"}`))
+			if err != nil {
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_, err = w.Write([]byte(`{"error": "Forbidden"}`))
+			if err != nil {
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
+			resultChan <- models.RequestResult{Request: r, HeuristicResults: results}
+			return
 		}
 
-		if len(reasons) > 0 {
-			metricsSink.IncMalicious()
-		}
+		// forward request
+		req, _ := http.NewRequest(r.Method, cfg.BackendURL+r.URL.RequestURI(), r.Body)
+		req.Header = r.Header.Clone()
 
-		entry := models.LogEntry{
-			Time:      time.Now().UTC(),
-			Method:    r.Method,
-			Path:      r.URL.Path,
-			Headers:   r.Header.Clone(),
-			Malicious: len(reasons) > 0,
-			Reasons:   reasons,
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			r.Response = &http.Response{
+				StatusCode: http.StatusBadGateway,
+				Header:     http.Header{"Content-Type": []string{"application/json"}},
+				Body:       io.NopCloser(io.Reader(nil)), // no body for bad gateway response
+				Status:     "502 Bad Gateway",
+				Request:    r,
+			}
+			LogResponse(r, results, start)
+			http.Error(w, "upstream error", http.StatusBadGateway)
+			w.Header().Set("Content-Type", "application/json")
+			if _, err := w.Write([]byte(`{"error": "Bad Gateway"}`)); err != nil {
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
+			return
 		}
-		_ = logSink.Send(entry)
-
-		resp := map[string]any{"status": "ok", "malicious": entry.Malicious, "reasons": reasons}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		defer func() {
+			if err := resp.Body.Close(); err != nil {
+				fmt.Printf("[interactors][server] error closing response body: %v\n", err)
+			}
+		}()
+		r.Response = resp
+		LogResponse(r, results, start)
+		maps.Copy(w.Header(), resp.Header)
+		w.WriteHeader(resp.StatusCode)
+		if _, err := io.Copy(w, resp.Body); err != nil {
+			http.Error(w, "[interactors][server] error copying response body", http.StatusInternalServerError)
+			return
+		}
 	})
 
-	fmt.Println("Proxy running at :8080")
-	return http.ListenAndServe(":8080", nil)
+	fmt.Printf("[interactors][server] starting proxy server on %s\n", cfg.ListenPort)
+	return http.ListenAndServe(cfg.ListenPort, nil)
 }

@@ -1,26 +1,70 @@
-version: '3.8'
+version: "3.8"
 
 services:
   proxy:
-    build: .
+    hostname: proxy
+    image: golang:1.23
     ports:
-      - "8080:8080"
-    environment:
-      - LOG_FORWARD_URL=http://log-forwarder:3100/ingest
+      - 8080:${PORT:-8080}
+      - 9090:9090
+    env_file: .env.example
+    working_dir: /app
+    command:
+      - go
+      - run
+      - cmd/server/main.go
+    volumes:
+      - .:/app
     depends_on:
       - log-forwarder
+      - prometheus
+      - otel
+      - backend
 
   log-forwarder:
     image: grafana/loki:2.9.3
-    ports:
-      - "3100:3100"
+    hostname: loki
     command: -config.file=/etc/loki/local-config.yaml
+    working_dir: /loki
     volumes:
       - ./loki-config.yaml:/etc/loki/local-config.yaml
+      - loki:/loki
+
+  grafana:
+    image: grafana/grafana:latest
+    hostname: grafana
+    ports:
+      - 3000:3000
+    volumes:
+      - ./grafana:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
 
   prometheus:
     image: prom/prometheus:latest
+    hostname: prometheus
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
     ports:
-      - "9090:9090"
+      - 9091:9090
+
+  otel:
+    image: otel/opentelemetry-collector-contrib:latest
+    hostname: otel
+    volumes:
+      - ./otel-config.yaml:/etc/otel/config.yaml
+    ports:
+      - 4317:4317
+    command:
+      - --config
+      - /etc/otel/config.yaml
+
+  backend:
+    image: jdkelley/simple-http-server:latest
+    hostname: backend
+    volumes:
+      - ./backend:/serve
+
+volumes:
+  loki:
+  grafana:
