@@ -18,7 +18,7 @@ func (h BadActorsCheck) Name() string {
 
 func (h BadActorsCheck) Check(r *http.Request) (string, bool) {
 	if len(h.BadIPs) == 0 {
-		h.BadIPs = GetBadIPs()
+		h.BadIPs = GetBadIPs(badIPsURL)
 	}
 	ip := r.RemoteAddr
 	for _, badIP := range h.BadIPs {
@@ -29,8 +29,10 @@ func (h BadActorsCheck) Check(r *http.Request) (string, bool) {
 	return "", false
 }
 
-func GetBadIPs() []string {
-	url := "https://raw.githubusercontent.com/ramit-mitra/blocklist-ipsets/main/rottenIPs.json"
+var badIPsURL = "https://raw.githubusercontent.com/ramit-mitra/blocklist-ipsets/main/rottenIPs.json"
+
+func GetBadIPs(url string) []string {
+
 	resp, err := http.Get(url)
 	if err != nil {
 		fmt.Println("[heuristics] failed to fetch bad IPs:", err)

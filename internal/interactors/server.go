@@ -29,12 +29,8 @@ func LogResponse(r *http.Request, results []models.HeuristicResult, start time.T
 	}
 }
 
-func StartProxyServer(cfg models.Config) error {
-	fmt.Printf("[interactors][server] starting proxy server with config: %+v\n", cfg)
-	go MetricsWorker(cfg, resultChan)
-	go LogWorker(cfg)
-
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+func GetHandler(cfg models.Config) http.HandlerFunc {
+	handler := func(w http.ResponseWriter, r *http.Request) {
 		var start = time.Now()
 		fmt.Printf("[interactors][server] received request: %s %s\n", r.Method, r.URL.Path)
 		r.Header.Set("X-Trace-ID", uuid.New().String())
@@ -61,12 +57,6 @@ func StartProxyServer(cfg models.Config) error {
 			w.WriteHeader(http.StatusForbidden)
 			w.Header().Set("Content-Type", "application/json")
 			_, err := w.Write([]byte(`{"error": "Forbidden"}`))
-			if err != nil {
-				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-				return
-			}
-			w.Header().Set("Content-Type", "application/json")
-			_, err = w.Write([]byte(`{"error": "Forbidden"}`))
 			if err != nil {
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 				return
@@ -110,7 +100,17 @@ func StartProxyServer(cfg models.Config) error {
 			http.Error(w, "[interactors][server] error copying response body", http.StatusInternalServerError)
 			return
 		}
-	})
+	}
+
+	return handler
+}
+
+func StartProxyServer(cfg models.Config) error {
+	fmt.Printf("[interactors][server] starting proxy server with config: %+v\n", cfg)
+	go MetricsWorker(cfg, resultChan)
+	go LogWorker(cfg)
+
+	http.HandleFunc("/", GetHandler(cfg))
 
 	fmt.Printf("[interactors][server] starting proxy server on %s\n", cfg.ListenPort)
 	return http.ListenAndServe(cfg.ListenPort, nil)
