@@ -4,14 +4,17 @@ services:
   proxy:
     build: .
     ports:
-      - 8080:8080
-    environment:
-      - LOG_FORWARD_URL=http://log-forwarder:3100/ingest
+      - 8080:${PORT:-8080}
+    env_file: .env
     depends_on:
       - log-forwarder
+      - prometheus
+      - otel
+      - backend
 
   log-forwarder:
     image: grafana/loki:2.9.3
+    hostname: loki
     ports:
       - 3100:3100
     command: -config.file=/etc/loki/local-config.yaml
@@ -20,7 +23,23 @@ services:
 
   prometheus:
     image: prom/prometheus:latest
+    hostname: prometheus
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
     ports:
       - 9090:9090
+
+  otel:
+    image: otel/opentelemetry-collector-contrib:latest
+    hostname: otel
+    volumes:
+      - ./otel-config.yaml:/etc/otel/config.yaml
+    ports:
+      - 4317:4317
+    command:
+      - --config
+      - /etc/otel/config.yaml
+
+  backend:
+    image: ealen/echo-server:0.9.2
+    hostname: backend
