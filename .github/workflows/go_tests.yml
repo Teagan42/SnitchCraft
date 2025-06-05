@@ -1,9 +1,8 @@
 name: Go Tests
 
 permissions:
-  contents: read
+  contents: write
   pull-requests: write
-
 on:
   push:
     branches: [main]
