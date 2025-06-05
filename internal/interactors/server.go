@@ -83,7 +83,11 @@ func StartProxyServer(cfg models.Config) error {
 			}
 			return
 		}
-		defer resp.Body.Close()
+		defer func() {
+			if err := resp.Body.Close(); err != nil {
+				fmt.Printf("[interactors][server] error closing response body: %v\n", err)
+			}
+		}()
 		logsChannel <- models.ResponseLogEntry{
 			Time:             time.Now(),
 			Method:           r.Method,

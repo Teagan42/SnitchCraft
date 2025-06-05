@@ -8,8 +8,14 @@ import (
 )
 
 func TestGetEnvReturnsEnvVar(t *testing.T) {
-	os.Setenv("TEST_ENV_VAR", "value")
-	defer os.Unsetenv("TEST_ENV_VAR")
+	if err := os.Setenv("TEST_ENV_VAR", "value"); err != nil {
+		t.Fatalf("failed to set env var: %v", err)
+	}
+	defer func() {
+		if err := os.Unsetenv("TEST_ENV_VAR"); err != nil {
+			t.Fatalf("failed to unset env var: %v", err)
+		}
+	}()
 
 	val := getEnv("TEST_ENV_VAR", "default")
 	if val != "value" {
@@ -18,7 +24,9 @@ func TestGetEnvReturnsEnvVar(t *testing.T) {
 }
 
 func TestGetEnvReturnsDefault(t *testing.T) {
-	os.Unsetenv("TEST_ENV_VAR")
+	if err := os.Unsetenv("TEST_ENV_VAR"); err != nil {
+		t.Fatalf("failed to unset env var: %v", err)
+	}
 
 	val := getEnv("TEST_ENV_VAR", "default")
 	if val != "default" {
@@ -46,10 +54,20 @@ func TestValidateReturnsConfigIfBackendURLPresent(t *testing.T) {
 }
 
 func TestLoadReturnsConfigWithDefaults(t *testing.T) {
-	os.Setenv("BACKEND_URL", "http://localhost")
-	defer os.Unsetenv("BACKEND_URL")
-	os.Unsetenv("LISTEN_PORT")
-	os.Unsetenv("PARALLEL_CHECKS")
+	if err := os.Setenv("BACKEND_URL", "http://localhost"); err != nil {
+		t.Fatalf("failed to set BACKEND_URL: %v", err)
+	}
+	defer func() {
+		if err := os.Unsetenv("BACKEND_URL"); err != nil {
+			t.Fatalf("failed to unset BACKEND_URL: %v", err)
+		}
+	}()
+	if err := os.Unsetenv("LISTEN_PORT"); err != nil {
+		t.Fatalf("failed to unset LISTEN_PORT: %v", err)
+	}
+	if err := os.Unsetenv("PARALLEL_CHECKS"); err != nil {
+		t.Fatalf("failed to unset PARALLEL_CHECKS: %v", err)
+	}
 
 	cfg, err := Load()
 	if err != nil {
