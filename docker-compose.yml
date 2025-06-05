@@ -2,10 +2,16 @@ version: "3.8"
 
 services:
   proxy:
-    build: .
+    image: golang:1.23
     ports:
       - 8080:${PORT:-8080}
-    env_file: .env
+    env_file: .env.example
+    command:
+      - go
+      - run
+      - cmd/server/main.go
+    volumes:
+      - .:/app
     depends_on:
       - log-forwarder
       - prometheus
