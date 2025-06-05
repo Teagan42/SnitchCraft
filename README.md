@@ -78,7 +78,9 @@ To build and run the application using Docker Compose:
 docker-compose up --build
 ```
 
-This will start the proxy server along with any configured services like Jaeger and Prometheus.
+This will start the proxy server along with Grafana and any configured services like Loki and Prometheus.
+
+Open the (Grafana Dashboard)[http://localhost:3000] (login: admin/admin) to see the proxy in action!
 
 ## 📈 Observability
 	•	Metrics: Exposed at /metrics on the configured METRICS_PORT.
