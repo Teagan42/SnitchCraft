@@ -35,7 +35,7 @@ jobs:
         continue-on-error: true # Should fail after coverage comment is posted
         with:
           config: .github/.testcoverage.yml
-          git-token: ${{ secrets.GITHUB_TOKEN || '' }}
+          git-token: ${{ github.ref_name == 'main' && secrets.GITHUB_TOKEN || '' }}
           git-branch: badges
 
       - name: Post coverage report
