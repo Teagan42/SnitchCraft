@@ -15,6 +15,7 @@ func Load() (models.Config, error) {
 		LokiUrl:        getEnv("LOKI_URL", ""),
 		PrometheusPort: getEnv("PROMETHEUS_PORT", ""),
 		OTELMetricUrl:  getEnv("OTEL_METRIC_URL", ""),
+		LogFile:        getEnv("LOG_FILE", ""),
 	})
 }
 

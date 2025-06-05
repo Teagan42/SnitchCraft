@@ -7,4 +7,5 @@ type Config struct {
 	PrometheusPort string
 	ListenPort     string
 	OTELMetricUrl  string
+	LogFile        string
 }

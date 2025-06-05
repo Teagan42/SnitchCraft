@@ -25,6 +25,9 @@ func TestConfig_DefaultValues(t *testing.T) {
 	if cfg.OTELMetricUrl != "" {
 		t.Errorf("expected OTELMetricUrl to be empty, got %q", cfg.OTELMetricUrl)
 	}
+	if cfg.LogFile != "" {
+		t.Errorf("expected LogFile to be empty, got %q", cfg.LogFile)
+	}
 }
 
 func TestConfig_FieldAssignment(t *testing.T) {
@@ -35,6 +38,7 @@ func TestConfig_FieldAssignment(t *testing.T) {
 		PrometheusPort: "9090",
 		ListenPort:     "8080",
 		OTELMetricUrl:  "http://otel",
+		LogFile:        "snitchcraft.log",
 	}
 	got := Config{
 		BackendURL:     "http://backend",
@@ -43,6 +47,7 @@ func TestConfig_FieldAssignment(t *testing.T) {
 		PrometheusPort: "9090",
 		ListenPort:     "8080",
 		OTELMetricUrl:  "http://otel",
+		LogFile:        "snitchcraft.log",
 	}
 	if !reflect.DeepEqual(want, got) {
 		t.Errorf("expected %+v, got %+v", want, got)
